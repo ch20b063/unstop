@@ -1,0 +1,47 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def extract_blog_data(soup):
+    blog_data = []
+    blog_items = soup.find_all("article", class_="blog-item")
+    
+    for item in blog_items:
+        title = item.find("h6").text.strip()
+        date = item.find("span", class_="post-date").text.strip()
+        image_url = item.find("a", class_="rocket-lazyload")["data-bg"]
+        likes_count = int(item.find("span", class_="zilla-likes").text.split()[0])
+        
+        blog_data.append({
+            "Title": title,
+            "Date": date,
+            "Image URL": image_url,
+            "Likes Count": likes_count
+        })
+    
+    return blog_data
+
+def scrape_blog_data(url):
+    blog_data = []
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    blog_data.extend(extract_blog_data(soup))
+
+    next_page_link = soup.find("a", class_="next")
+    if next_page_link:
+        next_url = "https://rategain.com" + next_page_link["href"]
+        blog_data.extend(scrape_blog_data(next_url))
+
+    return blog_data
+
+blog_data = scrape_blog_data("https://rategain.com/blog")
+
+
+df = pd.DataFrame(blog_data)
+df.to_excel("blog_data.xlsx", index=False)
+
+
+df.to_csv("blog_data.csv", index=False)
+
+print(df)
